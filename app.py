@@ -11,16 +11,29 @@ import json
 import os
 from urllib.parse import quote
 
-from flask import (Flask, Response, abort, flash, jsonify, redirect, render_template, request,
+import sys
+
+# Always import MailScope's own modules from this folder, never from site-packages.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _HERE)
+_REQUIRED = ["mailscope_core/__init__.py", "mailscope_core/parser.py", "mailscope_core/trace.py",
+             "mailscope_core/indicators.py", "mailscope_core/scoring.py", "mailscope_core/config.py",
+             "mailscope_core/common.py", "storage.py", "templates/report.html", "static/style.css"]
+_missing = [f for f in _REQUIRED if not os.path.isfile(os.path.join(_HERE, f))]
+if _missing:
+    sys.exit("MailScope files are missing from " + _HERE + ":\n  " + "\n  ".join(_missing)
+             + "\nRe-extract the full mailscope.zip into this folder.")
+
+from flask import (Flask, Response, abort, flash, jsonify, redirect, render_template, request,  # noqa: E402
                    send_file, url_for)
 
-from analyzer import __version__, analyze
-from analyzer.common import defang
-from analyzer.config import NOISY_DOMAINS, URL_SHORTENERS
+from mailscope_core import __version__, analyze  # noqa: E402
+from mailscope_core.common import defang  # noqa: E402
+from mailscope_core.config import NOISY_DOMAINS, URL_SHORTENERS  # noqa: E402
+from mailscope_core.scoring import CATEGORIES  # noqa: E402
+from storage import Store  # noqa: E402
 
 NOISY = set(NOISY_DOMAINS) | set(URL_SHORTENERS)
-from analyzer.scoring import CATEGORIES
-from storage import Store
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.environ.get("MAILSCOPE_DATA", os.path.join(BASE, "data"))

@@ -1,0 +1,27 @@
+Received: from mail-sor-f41.google.com (mail-sor-f41.google.com
+ [209.85.220.41]) by mx.example.cz (Postfix) with ESMTPS id 9A1B2C for
+ <jan.novak@example.cz>; Mon, 12 Oct 2026 10:02:11 +0200
+Received: by mail-sor-f41.google.com with SMTP id abc123 for
+ <jan.novak@example.cz>; Mon, 12 Oct 2026 01:02:09 -0700 (PDT)
+Authentication-Results: mx.example.cz; dkim=pass header.i=@gmail.com
+ header.s=20230601 header.b=Ab12; spf=pass (mx.example.cz: domain of
+ petra.svoboda@gmail.com designates 209.85.220.41 as permitted sender)
+ smtp.mailfrom=petra.svoboda@gmail.com; dmarc=pass (p=NONE sp=QUARANTINE
+ dis=NONE) header.from=gmail.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=gmail.com; s=20230601;
+ h=from:to; bh=x; b=y
+Return-Path: <petra.svoboda@gmail.com>
+From: Petra =?utf-8?q?Svobodov=C3=A1?= <petra.svoboda@gmail.com>
+To: Jan =?utf-8?q?Nov=C3=A1k?= <jan.novak@example.cz>
+Subject: Fotky z =?utf-8?q?v=C3=ADkendu?=
+Date: Mon, 12 Oct 2026 10:02:05 +0200
+Message-ID: <CAF1x2y3z@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+MIME-Version: 1.0
+
+Ahoj Honzo,
+
+posílám fotky z výletu, album je tady: https://photos.google.com/share/abc
+
+Petra

@@ -5,9 +5,11 @@
 """
 import argparse
 import json
+import os
 import sys
 
-from analyzer import analyze
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from mailscope_core import analyze  # noqa: E402
 
 
 def main():

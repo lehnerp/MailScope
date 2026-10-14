@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}{{ r.summary.subject or rec.filename }} · MailScope{% endblock %}
+{% set sc = r.scoring %}
+{% set C = 326.73 %}
+{% macro lk(kind, value) -%}
+  <span class="lookups">{% for name, url in lookups(kind, value) %}<a href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ name }}</a>{% endfor %}</span>
+{%- endmacro %}
+{% macro authpill(m) -%}
+  {% set res = (m.result if m else 'missing') %}
+  <span class="auth auth-{{ 'pass' if res in ('pass','bestguesspass') else ('fail' if res in ('fail','hardfail','softfail','permerror') else 'none') }}">{{ res }}</span>
+{%- endmacro %}
+
+{% block content %}
+<section class="verdict lvl-{{ sc.level }}">
+  <div class="gauge">
+    <svg viewBox="0 0 120 120" width="132" height="132" role="img" aria-label="Risk score {{ sc.score }} of 100">
+      <circle cx="60" cy="60" r="52" class="g-track"/>
+      <circle cx="60" cy="60" r="52" class="g-val" stroke-dasharray="{{ (sc.score/100*C)|round(2) }} {{ C }}" transform="rotate(-90 60 60)"/>
+      <text x="60" y="62" class="g-num">{{ sc.score }}</text>
+      <text x="60" y="80" class="g-sub">/ 100</text>
+    </svg>
+  </div>
+  <div class="v-main">
+    <div class="v-label">{{ sc.verdict }}</div>
+    <h1>{{ r.summary.subject or '(no subject)' }}</h1>
+    <dl class="kv">
+      <dt>From</dt><dd class="mono">{{ r.summary.from }}</dd>
+      <dt>To</dt><dd class="mono">{{ r.summary.to or '–' }}</dd>
+      <dt>Date</dt><dd class="mono">{{ r.summary.date or '–' }}</dd>
+      <dt>Origin</dt><dd class="mono">{% if r.trace.origin %}{{ r.trace.origin.ip }} <span class="muted">({{ r.trace.origin.helo }}{% if r.trace.origin.country %} · {{ r.trace.origin.country }}{% endif %})</span>{% else %}–{% endif %}</dd>
+    </dl>
+  </div>
+  <div class="v-side">
+    <div class="authrow">SPF {{ authpill(r.auth.spf) }} DKIM {{ authpill(r.auth.dkim) }} DMARC {{ authpill(r.auth.dmarc) }}</div>
+    <div class="catbars">
+      {% set maxv = [sc.category_totals.values()|max, 1]|max %}
+      {% for c in CATEGORIES %}{% set v = sc.category_totals.get(c, 0) %}
+        <div class="catbar"><span>{{ c }}</span><i><b style="width: {{ (v / maxv * 100)|round(0) }}%"></b></i><em>{{ v }}</em></div>
+      {% endfor %}
+    </div>
+    <div class="actions">
+      <a class="btn" href="{{ url_for('export_json', aid=rec.id) }}">JSON report</a>
+      <a class="btn" href="{{ url_for('export_iocs', aid=rec.id) }}">IOCs CSV</a>
+      <form method="post" action="{{ url_for('reanalyze', aid=rec.id) }}"><button class="btn ghost" title="Run current rules again">Re-analyse</button></form>
+      <form method="post" action="{{ url_for('delete', aid=rec.id) }}" class="confirm" data-confirm="Delete this case and its stored original?"><button class="btn ghost danger">Delete</button></form>
+    </div>
+  </div>
+</section>
+
+{% if r.notes %}<div class="flash flash-info">{% for n in r.notes %}{{ n }}<br>{% endfor %}</div>{% endif %}
+
+<nav class="tabs" role="tablist">
+  {% set nf = sc.findings|selectattr('weight','gt',0)|list|length %}
+  <button class="tab active" data-tab="overview">Findings <em>{{ nf }}</em></button>
+  <button class="tab" data-tab="trace">Trace <em>{{ r.trace.hop_count }}</em></button>
+  <button class="tab" data-tab="auth">Auth &amp; identity</button>
+  <button class="tab" data-tab="links">Links <em>{{ r.urls|length }}</em></button>
+  <button class="tab" data-tab="atts">Attachments <em>{{ r.attachments|length }}</em></button>
+  <button class="tab" data-tab="iocs">IOCs <em>{{ r.iocs|length }}</em></button>
+  <button class="tab" data-tab="headers">Headers <em>{{ r.headers|length }}</em></button>
+  <button class="tab" data-tab="body">Body</button>
+  <button class="tab" data-tab="related">Related <em class="{{ 'hot' if related else '' }}">{{ related|length }}</em></button>
+</nav>
+
+{# ------------------------------------------------------------------ FINDINGS #}
+<section class="panel active" id="tab-overview">
+  {% for f in sc.findings %}
+    <div class="finding sev-{{ f.severity }}">
+      <div class="f-w">{{ '%+d'|format(f.weight) if f.weight else '·' }}</div>
+      <div class="f-body">
+        <div class="f-title">{{ f.title }} <span class="tag">{{ f.category }}</span></div>
+        {% if f.detail %}<div class="f-detail">{{ f.detail }}</div>{% endif %}
+        {% if f.evidence %}<ul class="f-ev">{% for e in f.evidence %}<li class="mono">{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+    </div>
+  {% else %}
+    <p class="empty">No indicators fired.</p>
+  {% endfor %}
+  <p class="muted small">Score = sum of finding weights, clamped to 0–100 (raw {{ sc.raw_points }}). Weights live in <code>mailscope_core/config.py</code>.</p>
+</section>
+
+{# ------------------------------------------------------------------ TRACE #}
+<section class="panel" id="tab-trace">
+  <div class="trace-summary">
+    <div><span class="muted">Origin IP</span><b class="mono">{{ r.trace.origin.ip if r.trace.origin else '–' }}</b>
+      {% if r.trace.origin %}{{ lk('ip', r.trace.origin.ip) }}{% endif %}</div>
+    <div><span class="muted">HELO / rDNS</span><b class="mono">{{ r.trace.origin.helo if r.trace.origin else '–' }}</b>
+      {% if r.trace.origin %}<span class="small muted">logged rDNS: {{ r.trace.origin.rdns_claimed or '–' }}{% if r.trace.origin.rdns_live %} · live: {{ r.trace.origin.rdns_live }}{% endif %}</span>{% endif %}</div>
+    <div><span class="muted">Hops</span><b>{{ r.trace.hop_count }}</b></div>
+    <div><span class="muted">Total transit</span><b>{{ r.trace.total_transit_seconds|fmt_delay }}</b></div>
+  </div>
+
+  {% for a in r.trace.anomalies %}<div class="flash flash-warn">⚠ {{ a.text }}</div>{% endfor %}
+  {% if r.trace.originating_ips %}
+    <div class="sub">Client IPs disclosed by headers</div>
+    {% for i in r.trace.originating_ips %}<div class="mono small">{{ i.header }}: <b>{{ i.ip }}</b> <span class="tag">{{ i.class }}</span> {% if i.class=='public' %}{{ lk('ip', i.ip) }}{% endif %}</div>{% endfor %}
+  {% endif %}
+
+  {% if r.trace.hops %}
+  <div class="sub">Delivery path — oldest (sender) at top</div>
+  <ol class="hops">
+    {% for h in r.trace.hops %}
+    <li class="hop {{ 'origin' if r.trace.origin and r.trace.origin.hop == h.index }}">
+      <div class="hop-n">{{ h.index }}</div>
+      <div class="hop-body">
+        <div class="hop-line">
+          <span class="mono">{{ h.from_host or '(local)' }}</span>
+          {% for i in h.ips %}<span class="ip ip-{{ i.class }}">{{ i.ip }}</span>{% endfor %}
+          <span class="arrow">→</span>
+          <span class="mono">{{ h.by_host or '?' }}</span>
+          {% if r.trace.origin and r.trace.origin.hop == h.index %}<span class="tag hot">origin</span>{% endif %}
+        </div>
+        <div class="hop-meta small">
+          <span>{{ h.protocol or '–' }}{% if h.tls %} · TLS{% endif %}</span>
+          <span class="mono">{{ h.timestamp[:19].replace('T',' ') ~ ' UTC' if h.timestamp else 'no timestamp' }}</span>
+          <span class="delay {{ 'bad' if h.delay_seconds is not none and (h.delay_seconds < -300 or h.delay_seconds > 3600) }}">Δ {{ h.delay_seconds|fmt_delay }}</span>
+          {% if h['for'] %}<span>for {{ h['for'] }}</span>{% endif %}
+          {% if h.from_rdns %}<span>rDNS: {{ h.from_rdns }}</span>{% endif %}
+        </div>
+        {% for i in h.ips if i.class == 'public' %}<div class="small">{{ i.ip }} {{ lk('ip', i.ip) }}</div>{% endfor %}
+        <details><summary class="small muted">raw</summary><pre>{{ h.raw }}</pre></details>
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+    <p class="empty">No Received headers – routing cannot be traced{% if r.file.format == 'MSG' %} (MSG without transport headers){% endif %}.</p>
+  {% endif %}
+
+  {% if r.trace.gateway_verdicts %}
+  <div class="sub">Gateway verdicts</div>
+  {% for g in r.trace.gateway_verdicts %}<div class="small"><b>{{ g.source }}</b> <span class="mono">{{ g.summary }}</span> {% if g.spam %}<span class="tag hot">spam</span>{% endif %}</div>{% endfor %}
+  {% endif %}
+</section>
+
+{# ------------------------------------------------------------------ AUTH #}
+<section class="panel" id="tab-auth">
+  <div class="authgrid">
+    {% for m in ['spf','dkim','dmarc','arc','compauth'] %}{% set a = r.auth[m] %}
+      {% if a or m in ('spf','dkim','dmarc') %}
+      <div class="authcard">
+        <div class="ac-h">{{ m|upper }} {{ authpill(a) }}</div>
+        {% if a %}
+          {% for k, v in a.props.items() %}<div class="small mono">{{ k }} = {{ v }}</div>{% endfor %}
+          {% if a.comment %}<div class="small muted">{{ a.comment }}</div>{% endif %}
+        {% else %}<div class="small muted">No result recorded.</div>{% endif %}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  <p class="small muted">Source: {{ r.auth.source or 'none' }}{% if r.auth.spf_source %} / SPF from {{ r.auth.spf_source }}{% endif %}</p>
+  {% if r.auth.dkim_signatures %}
+    <div class="sub">DKIM signatures</div>
+    {% for s in r.auth.dkim_signatures %}<div class="mono small">d={{ s.d }} s={{ s.s }} a={{ s.a }}</div>{% endfor %}
+  {% endif %}
+
+  <div class="sub">Sender identity</div>
+  {% set i = r.identity %}
+  <table class="grid compact">
+    <tr><th>Display name</th><td>{{ i.from_name or '–' }}</td></tr>
+    <tr><th>From</th><td class="mono">{{ i.from_addr }} {% if i.free_mail %}<span class="tag">free webmail</span>{% endif %}</td></tr>
+    <tr><th>Return-Path</th><td class="mono">{{ i.return_path or '–' }}</td></tr>
+    <tr><th>Reply-To</th><td class="mono">{{ i.reply_to|join(', ') or '–' }}</td></tr>
+    <tr><th>Sender</th><td class="mono">{{ i.sender or '–' }}</td></tr>
+    <tr><th>Message-ID</th><td class="mono break">{{ i.message_id or '–' }}</td></tr>
+    <tr><th>Mailer</th><td class="mono">{{ i.x_mailer or '–' }}</td></tr>
+  </table>
+  {% if i.checks %}
+  <div class="sub">Domain alignment</div>
+  <table class="grid compact">
+    {% for c in i.checks %}
+      <tr><th>{{ c.label }}</th><td class="mono">{{ c.a }} ⇄ {{ c.b }}</td><td>{% if c.aligned %}<span class="auth auth-pass">aligned</span>{% else %}<span class="auth auth-fail">mismatch</span>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% if r.auth.raw %}<div class="sub">Raw Authentication-Results</div>{% for x in r.auth.raw %}<pre>{{ x }}</pre>{% endfor %}{% endif %}
+</section>
+
+{# ------------------------------------------------------------------ LINKS #}
+<section class="panel" id="tab-links">
+  {% if r.urls %}
+  <p class="small muted">URLs are shown defanged and are never fetched. Use the lookup links to check reputation.</p>
+  <table class="grid">
+    <thead><tr><th>URL</th><th>Flags</th><th>Seen in</th><th>Lookups</th></tr></thead>
+    <tbody>
+    {% for u in r.urls %}
+      <tr>
+        <td class="mono small break">
+          <span class="copy" data-copy="{{ u.url }}" title="Copy original">{{ u.url|defang }}</span>
+          {% if u.display_texts %}<div class="muted">text: “{{ u.display_texts|join('” · “') }}”</div>{% endif %}
+        </td>
+        <td>{% for l in u.flag_labels %}<span class="tag {{ 'hot' if loop.index0 < 3 and u.flags[loop.index0] in ('mismatch','ip_host','punycode','js_scheme','userinfo') }}">{{ l }}</span>{% endfor %}</td>
+        <td class="small">{{ u.sources|join(', ') }}</td>
+        <td>{{ lk('url', u.url) }}{% if u.host %}<br>{{ lk('ip' if u.host.replace('.','').isdigit() else 'domain', u.host) }}{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty">No links found.</p>{% endif %}
+  {% if r.html.forms %}<div class="sub">HTML forms</div>{% for f in r.html.forms %}<div class="mono small">action: {{ f|defang }}</div>{% endfor %}{% endif %}
+  {% if r.html.tracking_pixels %}<p class="small muted">{{ r.html.tracking_pixels }} tracking pixel(s) detected (1×1 images).</p>{% endif %}
+</section>
+
+{# ------------------------------------------------------------------ ATTACHMENTS #}
+<section class="panel" id="tab-atts">
+  {% for a in r.attachments %}
+    <div class="att {{ 'att-bad' if a.flags|reject('equalto','archive')|list }}">
+      <div class="att-h">
+        <b class="mono">{{ a.filename }}</b>
+        <span class="muted small">{{ a.size|fmt_bytes }} · declared {{ a.content_type }} · detected <b>{{ a.magic }}</b>{% if a.inline %} · inline{% endif %}</span>
+      </div>
+      <div>{% for f in a.flags %}<span class="tag {{ 'hot' if f != 'archive' }}">{{ f.replace('_',' ') }}</span>{% endfor %}</div>
+      {% for n in a.notes %}<div class="small">• {{ n }}</div>{% endfor %}
+      {% if a.archive and a.archive.entries %}
+        <details open><summary class="small">Archive contents ({{ a.archive.entry_count }}{% if a.archive.encrypted %}, encrypted{% endif %})</summary>
+          <ul class="mono small">{% for e in a.archive.entries %}<li class="{{ 'bad' if e in a.archive.risky_entries }}">{{ e }}</li>{% endfor %}</ul></details>
+      {% endif %}
+      <table class="grid compact hashes">
+        {% for h in ['sha256','sha1','md5'] %}<tr><th>{{ h|upper }}</th><td class="mono small copy" data-copy="{{ a[h] }}">{{ a[h] }}</td><td>{{ lk(h, a[h]) }}</td></tr>{% endfor %}
+      </table>
+    </div>
+  {% else %}<p class="empty">No attachments.</p>{% endfor %}
+  {% if r.attachments %}<p class="small muted">Attachment bytes are not extracted to disk. Download the original (as <code>.quarantine</code>) from the Headers tab if you need to detonate it in a sandbox.</p>{% endif %}
+</section>
+
+{# ------------------------------------------------------------------ IOCs #}
+<section class="panel" id="tab-iocs">
+  <div class="row-between">
+    <p class="small muted">Click a value to copy it. “Pivot” searches every stored case for the same indicator.</p>
+    <span><button class="btn ghost" data-copy-all="iocs-table">Copy all (defanged)</button> <a class="btn" href="{{ url_for('export_iocs', aid=rec.id) }}">CSV</a></span>
+  </div>
+  <table class="grid" id="iocs-table">
+    <thead><tr><th>Type</th><th>Value</th><th>Context</th><th></th></tr></thead>
+    <tbody>
+    {% for i in r.iocs %}
+      <tr data-type="{{ i.type }}" data-def="{{ i.value|defang if i.type in ('url','domain','ip','email') else i.value }}">
+        <td><span class="tag">{{ i.type }}</span></td>
+        <td class="mono small break copy" data-copy="{{ i.value }}">{{ i.value|defang if i.type == 'url' else i.value }}</td>
+        <td class="small">{{ i.context }}</td>
+        <td class="nowrap"><a class="small" href="{{ url_for('search', q=i.value) }}">Pivot</a> {{ lk(i.type, i.value) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{# ------------------------------------------------------------------ HEADERS #}
+<section class="panel" id="tab-headers">
+  <div class="row-between">
+    <input class="hfilter" id="hfilter" placeholder="Filter headers…">
+    <span><a class="btn ghost" href="{{ url_for('export_headers', aid=rec.id) }}" target="_blank">Raw text</a>
+      <a class="btn ghost" href="{{ url_for('download_original', aid=rec.id) }}">Original (.quarantine)</a></span>
+  </div>
+  <table class="grid compact" id="htable">
+    {% for h in r.headers %}<tr><th class="nowrap">{{ h.name }}</th><td class="mono small break">{{ h.value }}</td></tr>{% endfor %}
+  </table>
+  <p class="small muted">File: {{ r.file.filename }} · {{ r.file.format }} · {{ r.file.size|fmt_bytes }} · SHA-256 <span class="mono">{{ r.file.sha256 }}</span> · analysed {{ r.analyzed_at }} · engine {{ r.engine_version }}</p>
+</section>
+
+{# ------------------------------------------------------------------ BODY #}
+<section class="panel" id="tab-body">
+  {% set kh = r.body.keyword_hits %}
+  <div class="kw">{% for g, words in kh.items() if words %}<span class="small"><b>{{ g.replace('_',' ') }}:</b> {% for w in words %}<span class="tag">{{ w }}</span>{% endfor %}</span>{% endfor %}</div>
+  <div class="subtabs">
+    <button class="btn ghost active" data-body="text">Plain text</button>
+    {% if r.body.has_html %}<button class="btn ghost" data-body="html">Rendered HTML (sandboxed)</button>
+    <button class="btn ghost" data-body="src">HTML source</button>{% endif %}
+  </div>
+  <pre class="bodytext" id="body-text">{{ r.body.text or '(empty)' }}</pre>
+  {% if r.body.has_html %}
+    <div id="body-html" hidden>
+      <p class="small muted">Scripts, forms and remote images are blocked; links do not work.</p>
+      <iframe class="preview" sandbox="" referrerpolicy="no-referrer" srcdoc="{{ r.body.html }}"></iframe>
+    </div>
+    <pre class="bodytext" id="body-src" hidden>{{ r.body.html }}</pre>
+  {% endif %}
+</section>
+
+{# ------------------------------------------------------------------ RELATED #}
+<section class="panel" id="tab-related">
+  {% if related %}
+  <p class="small muted">Other stored emails sharing indicators with this one (free-mail and big-platform domains ignored).</p>
+  <table class="grid">
+    <thead><tr><th>Score</th><th>Email</th><th>Shared indicators</th><th>Analysed</th></tr></thead>
+    <tbody>
+    {% for x in related %}
+      <tr>
+        <td><span class="score-pill lvl-{{ x.level }}">{{ x.score }}</span></td>
+        <td><a href="{{ url_for('report', aid=x.id) }}">{{ x.subject or x.filename }}</a><div class="mono small muted">{{ x.sender }}</div></td>
+        <td>{% for t, v in x.shared[:8] %}<span class="tag">{{ t }}: {{ v[:60] }}</span>{% endfor %}{% if x.shared|length > 8 %} +{{ x.shared|length - 8 }}{% endif %}</td>
+        <td class="small mono">{{ x.uploaded_at[:16].replace('T',' ') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty">No other case shares indicators with this email yet.</p>{% endif %}
+</section>
+{% endblock %}

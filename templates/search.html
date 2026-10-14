@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Pivot: {{ q }} · MailScope{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-head"><h2>IOC pivot: <span class="mono">{{ q }}</span></h2></div>
+  {% if q|length < 3 %}
+    <p class="empty">Type at least 3 characters.</p>
+  {% elif not rows %}
+    <p class="empty">No stored email contains an indicator matching “{{ q }}”.</p>
+  {% else %}
+    <p class="muted">{{ rows|length }} hit(s) across {{ rows|map(attribute='id')|unique|list|length }} email(s).</p>
+    <table class="grid">
+      <thead><tr><th>Score</th><th>Type</th><th>Indicator</th><th>Where</th><th>Email</th><th>Analysed</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td><span class="score-pill lvl-{{ r.level }}">{{ r.score }}</span></td>
+          <td><span class="tag">{{ r.type }}</span></td>
+          <td class="mono small break">{{ r.value }}</td>
+          <td class="small">{{ r.context }}</td>
+          <td><a href="{{ url_for('report', aid=r.id) }}">{{ r.subject or r.filename }}</a></td>
+          <td class="small mono">{{ r.uploaded_at[:16].replace('T',' ') }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</section>
+{% endblock %}

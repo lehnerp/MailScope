@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="intake">
+  <form id="upload-form" action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+    <label class="drop" id="drop">
+      <input type="file" name="files" id="file-input" accept=".eml,.msg,.txt,.mht" multiple>
+      <span class="drop-title">Drop .eml / .msg files here</span>
+      <span class="drop-sub">or click to choose · several at once is fine · nothing leaves this machine</span>
+      <span class="drop-files" id="drop-files"></span>
+    </label>
+    <div class="intake-opts">
+      <label><input type="checkbox" name="rdns" value="1"> Live reverse-DNS on origin IP <span class="muted">(one DNS query)</span></label>
+      <label><input type="checkbox" name="force" value="1"> Re-analyse duplicates</label>
+      <button class="btn primary" type="submit">Analyse</button>
+    </div>
+  </form>
+
+  <div class="stats">
+    <div class="stat"><b>{{ stats.total }}</b><span>analysed</span></div>
+    {% for key, label in [('critical','malicious'),('high','likely phish'),('suspicious','suspicious'),('low','low risk')] %}
+      <a class="stat lvl-{{ key }}" href="{{ url_for('index', level=key) }}"><b>{{ stats.by_level.get(key, 0) }}</b><span>{{ label }}</span></a>
+    {% endfor %}
+  </div>
+  {% if stats.repeat_ips or stats.repeat_domains %}
+  <div class="campaigns">
+    <span class="muted">Recurring infrastructure:</span>
+    {% for x in stats.repeat_ips %}<a class="chip" href="{{ url_for('search', q=x.value) }}">{{ x.value }} <em>×{{ x.n }}</em></a>{% endfor %}
+    {% for x in stats.repeat_domains %}<a class="chip" href="{{ url_for('search', q=x.value) }}">{{ x.value }} <em>×{{ x.n }}</em></a>{% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Cases</h2>
+    <form class="filter" method="get">
+      <input name="q" value="{{ q }}" placeholder="Filter subject, sender, IP, any IOC…">
+      {% if level %}<input type="hidden" name="level" value="{{ level }}">{% endif %}
+      <button class="btn">Filter</button>
+      {% if q or level %}<a class="btn ghost" href="{{ url_for('index') }}">Clear</a>{% endif %}
+      <a class="btn ghost" href="{{ url_for('export_all') }}">Export CSV</a>
+    </form>
+  </div>
+  {% if rows %}
+  <table class="grid">
+    <thead><tr><th>Score</th><th>Subject</th><th>Sender</th><th>Origin IP</th><th>File</th><th>Analysed (UTC)</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr class="rowlink" data-href="{{ url_for('report', aid=r.id) }}">
+        <td><span class="score-pill lvl-{{ r.level }}">{{ r.score }}</span></td>
+        <td><a href="{{ url_for('report', aid=r.id) }}">{{ r.subject or '(no subject)' }}</a><div class="muted small">{{ r.verdict }}</div></td>
+        <td class="mono small">{{ r.sender }}</td>
+        <td class="mono small">{{ r.origin_ip or '–' }}</td>
+        <td class="small">{{ r.filename }}</td>
+        <td class="small mono">{{ r.uploaded_at[:16].replace('T',' ') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="empty">No cases yet. Drop an email above — try <code>samples/phishing_sample.eml</code>.</p>
+  {% endif %}
+</section>
+{% endblock %}

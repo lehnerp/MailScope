@@ -43,12 +43,13 @@ low / suspicious / high, so it can be used in scripts.
 - **Related tab** – other cases sharing non-trivial indicators (free-mail and big-platform domains are ignored).
 - **Recurring infrastructure** on the home page – origin IPs and domains seen in more than one suspicious case.
 - **Re-analyse** – originals are kept (stored without extension) so you can re-score after tuning rules.
+- **Dark mode** – the toggle in the top-right corner switches between Auto (follows Windows), Light and Dark; your choice is remembered.
 - **JSON API** – `curl -F file=@mail.eml "http://127.0.0.1:5000/api/analyze?save=1"`.
 
 ## Tuning the score
 
 All weights, thresholds, brand names, keyword lists, shorteners, TLDs and hosting platforms
-are in `analyzer/config.py`. Levels: 0–19 low, 20–44 suspicious, 45–69 likely phishing,
+are in `mailscope_core/config.py`. Levels: 0–19 low, 20–44 suspicious, 45–69 likely phishing,
 70+ malicious. Passing SPF+DKIM+DMARC subtracts 10 (it proves the sender, not that the
 sender is benign). After changing weights, press **Re-analyse** on a case.
 
@@ -74,7 +75,7 @@ sender is benign). After changing weights, press **Re-analyse** on a case.
 app.py              Flask routes, exports, API
 storage.py          SQLite (cases + IOC index for pivot/correlation)
 cli.py              command-line analyser
-analyzer/
+mailscope_core/
   parser.py         EML (stdlib) and MSG (extract-msg) → one structure
   trace.py          Received chain, auth results, identity/alignment, gateway verdicts
   indicators.py     URLs, HTML, attachments, keywords, IOC extraction

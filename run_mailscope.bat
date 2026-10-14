@@ -16,6 +16,10 @@ set "HOST=127.0.0.1"
 set "URL=http://%HOST%:%PORT%"
 set "VPY=.venv\Scripts\python.exe"
 
+REM ---- Make sure the project files are complete -------------
+if not exist "mailscope_core\__init__.py" goto files_missing
+if not exist "app.py" goto files_missing
+
 REM ---- Already running? Just open the browser ----------------
 netstat -ano | findstr /R /C:":%PORT% .*LISTENING" >nul 2>&1
 if not errorlevel 1 goto already_running
@@ -74,6 +78,13 @@ echo             If that is not MailScope, run: run_mailscope.bat 5050
 start "" "%URL%"
 timeout /t 4 >nul
 exit /b 0
+
+:files_missing
+echo [MailScope] Project files are missing in %CD%
+echo   Expected app.py and the mailscope_core folder next to this .bat file.
+echo   Extract the complete mailscope.zip into an empty folder and run it from there.
+pause
+exit /b 1
 
 :no_python
 echo [MailScope] Python was not found.
